@@ -1,9 +1,13 @@
+import os
 from flask import Blueprint, request, jsonify
 from app import db, mail
 from models import Customer
 from extensions import Message
 import bcrypt
 import secrets
+import jwt
+from flask_jwt_extended import jwt_required
+import datetime
 
 api_blueprint = Blueprint('api', __name__)
 
@@ -53,8 +57,8 @@ def get_personal_token():
     
     return jsonify({"token": existing_customer.personal_token}), 201
 
-@api_blueprint.route('/public/send_token', methods=['POST'])
-def send_personal_token():
+@api_blueprint.route('/public/signin', methods=['POST'])
+def sign_in():
     data = request.get_json()
 
     if not data or 'email' not in data or 'password' not in data:
@@ -65,21 +69,17 @@ def send_personal_token():
 
     existing_customer = Customer.query.filter_by(email=email).first()
 
-    if not existing_customer:
-        return jsonify({"message": "Customer not found."}), 404
+    if existing_customer:
+        return jsonify({"message": "Customer with this email already exists"}), 400
     
-    if not check_password(existing_customer.password, password):
-        return jsonify({"message": "Invalid password."}), 400
+    if check_password(existing_customer.password, password):
+        token = generate_token(existing_customer.id)
+        return jsonify({'token': token}), 200
     
-    try:
-        message = Message('OpenMovie Registration', recipients=[existing_customer.email])
-        message.body = f'Hello! Your personal token is {existing_customer.personal_token}. Use it for sign up!'
-        mail.send(message)
-        return jsonify({"message": "Customer registered and token sent to email"}), 201
-    except Exception as e:
-        return jsonify({"message": f"Error sending email: {str(e)}"}), 500
+    return jsonify({'message': 'Invalid credentials'}), 401
 
 @api_blueprint.route('/protected', methods=['GET'])
+@jwt_required()
 def protected():
     return 'Protected'
 
@@ -91,6 +91,16 @@ def hash_password(password: str) -> str:
 
 def generate_personal_token(length: int = 32) -> str:
     token = secrets.token_urlsafe(length)
+    return token
+
+def generate_token(customer_id):
+    payload = {
+        'sub': customer_id,
+        'iat': datetime.datetime.utcnow(),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    }
+    token = jwt.encode(payload, os.environ['secret_key'], algorithm='HS256')
+
     return token
 
 def check_password(hash_password, password):
