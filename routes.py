@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app import db
+from app import db, mail
 from models import Customer
+from extensions import Message
 import bcrypt
 import secrets
 
@@ -70,7 +71,13 @@ def send_personal_token():
     if not check_password(existing_customer.password, password):
         return jsonify({"message": "Invalid password."}), 400
     
-    return jsonify({"token": existing_customer.personal_token}), 201
+    try:
+        message = Message('OpenMovie Registration', recipients=[existing_customer.email])
+        message.body = f'Hello! Your personal token is {existing_customer.personal_token}. Use it for sign up!'
+        mail.send(message)
+        return jsonify({"message": "Customer registered and token sent to email"}), 201
+    except Exception as e:
+        return jsonify({"message": f"Error sending email: {str(e)}"}), 500
 
 @api_blueprint.route('/protected', methods=['GET'])
 def protected():
