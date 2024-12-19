@@ -9,7 +9,6 @@ def create_app(name, debug):
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['db_uri']
     app.config['SECRET_KEY'] = os.environ['secret_key']
     app.config['DEBUG'] = debug
-    mail.init_app(app)
     db.init_app(app)
     jwt = JWTManager(app)
 
