@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, request, jsonify
-from app import db, mail, jwt
+from app import db
 from models import Customer
 from extensions import Message
 import bcrypt
