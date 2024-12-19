@@ -83,9 +83,6 @@ def sign_in():
     password = data['password']
 
     existing_customer = Customer.query.filter_by(email=email).first()
-
-    if existing_customer:
-        return jsonify({"message": "Customer with this email already exists"}), 400
     
     if check_password(existing_customer.password, password):
         access_token = create_access_token(identity=existing_customer.id)
