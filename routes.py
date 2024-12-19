@@ -1,12 +1,12 @@
 import os
 from flask import Blueprint, request, jsonify
-from app import db, mail
+from app import db, mail, jwt
 from models import Customer
 from extensions import Message
 import bcrypt
 import secrets
 import jwt
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, create_access_token, get_jwt_identity
 import datetime
 
 api_blueprint = Blueprint('api', __name__)
@@ -57,6 +57,22 @@ def get_personal_token():
     
     return jsonify({"token": existing_customer.personal_token}), 201
 
+@api_blueprint.route('/public/token', methods=['POST'])
+def create_token():
+    email = request.json.get('email', None)
+    password = request.json.get('password', None)
+
+    customer = Customer.query.filter_by(email=email).first()
+
+    if customer is None:
+        return jsonify({"message": "Failed username or password"}), 401
+    
+    if check_password(customer.password, password):
+        access_token = create_access_token(identity=customer.id)
+        return jsonify({ "token": access_token, "user_id": customer.id })
+    
+    return jsonify({'message': 'Invalid credentials'}), 401
+
 @api_blueprint.route('/public/signin', methods=['POST'])
 def sign_in():
     data = request.get_json()
@@ -73,15 +89,18 @@ def sign_in():
         return jsonify({"message": "Customer with this email already exists"}), 400
     
     if check_password(existing_customer.password, password):
-        token = generate_token(existing_customer.id)
-        return jsonify({'token': token}), 200
+        access_token = create_access_token(identity=existing_customer.id)
+        return jsonify({ "token": access_token, "user_id": existing_customer.id })
     
     return jsonify({'message': 'Invalid credentials'}), 401
 
-@api_blueprint.route('/protected', methods=['GET'])
+@api_blueprint.route('/private/getme', methods=['GET'])
 @jwt_required()
-def protected():
-    return 'Protected'
+def get_me():
+    customer_id = get_jwt_identity()
+    customer = Customer.query.get(id=customer_id)
+
+    return jsonify({ "id": customer.id, "email": customer.email, "personal_token": customer.personal_token })
 
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()

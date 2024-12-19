@@ -2,6 +2,7 @@ import os
 from flask import Flask
 from extensions import db, mail
 from routes import api_blueprint
+from flask_jwt_extended import JWTManager
 
 def create_app(name, debug):
     app = Flask(name)
@@ -10,6 +11,7 @@ def create_app(name, debug):
     app.config['DEBUG'] = debug
     mail.init_app(app)
     db.init_app(app)
+    jwt = JWTManager(app)
 
     app.register_blueprint(api_blueprint)
 
