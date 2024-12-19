@@ -94,7 +94,7 @@ def sign_in():
 @jwt_required()
 def get_me():
     customer_id = get_jwt_identity()
-    customer = Customer.query.get(id=customer_id)
+    customer = Customer.query.get(customer_id)
 
     return jsonify({ "id": customer.id, "email": customer.email, "personal_token": customer.personal_token })
 
