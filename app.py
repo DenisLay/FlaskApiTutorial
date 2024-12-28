@@ -13,7 +13,7 @@ def create_app(name, debug):
     db.init_app(app)
     jwt = JWTManager(app)
 
-    CORS(app)
+    CORS(app, supports_credentials=True)
 
     app.register_blueprint(api_blueprint)
 
